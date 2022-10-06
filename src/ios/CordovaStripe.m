@@ -37,33 +37,111 @@ NSArray *CardBrands = nil;
     NSString *country = [command.arguments objectAtIndex:1];
     NSString *currency = [command.arguments objectAtIndex:2];
     NSArray *items = [command.arguments objectAtIndex:3];
+    NSString *mode = [command.arguments objectAtIndex:4];
+    NSLog(@"mode is %@", mode);
+    if ([mode isEqualToString: @"recurring"]) {
+        if (@available(iOS 16.0, *)) {
+            PKPaymentRequest *paymentRequest = [Stripe paymentRequestWithMerchantIdentifier:merchantIdentifier country:country currency:currency];
+            id itemFirst = [items objectAtIndex:0];
+            
+            
+            PKRecurringPaymentSummaryItem *paymentSummaryItems = [PKRecurringPaymentSummaryItem summaryItemWithLabel:itemFirst[@"label"] amount:[NSDecimalNumber decimalNumberWithString: itemFirst[@"amount"]]];
+            paymentSummaryItems.startDate = [NSDate date];
+            NSTimeInterval intervalInDays=60 * 60 * 24 * [itemFirst[@"intervalInDays"] doubleValue];;
+            paymentSummaryItems.endDate = [[NSDate date] dateByAddingTimeInterval: intervalInDays];
+            paymentSummaryItems.intervalUnit = NSCalendarUnitMonth;
+            paymentRequest.recurringPaymentRequest = [[PKRecurringPaymentRequest alloc] initWithPaymentDescription: @"Recurring"
+                                                                                                    regularBilling: paymentSummaryItems
+                                                                                                     managementURL: [NSURL URLWithString:itemFirst[@"managementURL"]]];
+            paymentRequest.recurringPaymentRequest.billingAgreement = itemFirst[@"billingAgreement"];
+            paymentRequest.paymentSummaryItems = @[paymentSummaryItems];
+            
+            
+            if ([Stripe canSubmitPaymentRequest:paymentRequest]) {
+                PKPaymentAuthorizationViewController *paymentAuthorizationViewController = [[PKPaymentAuthorizationViewController alloc] initWithPaymentRequest:paymentRequest];
+                
+                paymentAuthorizationViewController.delegate = self.appDelegate;
+                self.applePayCDVCallbackId = command.callbackId;
+                
+                NSLog(@"Callback ID is %@", command.callbackId);
+                
+                
+                [self.viewController presentViewController:paymentAuthorizationViewController animated:YES completion:nil];
+                
+                
+            } else {
+                NSLog(@"Problem with integration");
+            }
+        }
+        else {
+            NSLog(@"Recurring payment available from iOS 16.0");
+        }
+    }
+    else if ([mode isEqualToString: @"automaticReload"]) {
+        if (@available(iOS 16.0, *)) {
+            PKPaymentRequest *paymentRequest = [Stripe paymentRequestWithMerchantIdentifier:merchantIdentifier country:country currency:currency];
+            id itemFirst = [items objectAtIndex:0];
+            
+            
+          PKAutomaticReloadPaymentSummaryItem *paymentSummaryItems = [PKAutomaticReloadPaymentSummaryItem summaryItemWithLabel:itemFirst[@"label"] amount:[NSDecimalNumber decimalNumberWithString: itemFirst[@"amount"]]];
+              
+            paymentSummaryItems.thresholdAmount=[NSDecimalNumber decimalNumberWithString: itemFirst[@"thresholdAmount"]];
+            paymentRequest.automaticReloadPaymentRequest = [[PKAutomaticReloadPaymentRequest alloc] initWithPaymentDescription: @"Automatic Reload"
+                                                                                                    automaticReloadBilling: paymentSummaryItems
+                                                                                                     managementURL: [NSURL URLWithString:itemFirst[@"managementURL"]]];
+            paymentRequest.automaticReloadPaymentRequest.billingAgreement = itemFirst[@"billingAgreement"];
+            paymentRequest.paymentSummaryItems = @[paymentSummaryItems];
+            
+            
+            if ([Stripe canSubmitPaymentRequest:paymentRequest]) {
+                PKPaymentAuthorizationViewController *paymentAuthorizationViewController = [[PKPaymentAuthorizationViewController alloc] initWithPaymentRequest:paymentRequest];
+                
+                paymentAuthorizationViewController.delegate = self.appDelegate;
+                self.applePayCDVCallbackId = command.callbackId;
+                
+                NSLog(@"Callback ID is %@", command.callbackId);
+                
+                
+                [self.viewController presentViewController:paymentAuthorizationViewController animated:YES completion:nil];
+                
+                
+            } else {
+                NSLog(@"Problem with integration");
+            }
+        }
+        else {
+            NSLog(@"Automatic Reload payment available from iOS 16.0");
+        }
+    }
+    else
+    {
+        PKPaymentRequest *paymentRequest = [Stripe paymentRequestWithMerchantIdentifier:merchantIdentifier country:country currency:currency];
     
-    PKPaymentRequest *paymentRequest = [Stripe paymentRequestWithMerchantIdentifier:merchantIdentifier country:country currency:currency];
-    
-    NSMutableArray *paymentSummaryItems = [[NSMutableArray alloc] initWithCapacity:sizeof items];
-    for (NSDictionary *item in items) {
-        [paymentSummaryItems addObject:[PKPaymentSummaryItem summaryItemWithLabel:item[@"label"] amount:[NSDecimalNumber decimalNumberWithString:item[@"amount"]]]];
+        NSMutableArray *paymentSummaryItems = [[NSMutableArray alloc] initWithCapacity:sizeof items];
+        for (NSDictionary *item in items) {
+            [paymentSummaryItems addObject:[PKPaymentSummaryItem summaryItemWithLabel:item[@"label"] amount:[NSDecimalNumber decimalNumberWithString:item[@"amount"]]]];
+        }
+        
+        paymentRequest.paymentSummaryItems = paymentSummaryItems;
+        
+        if ([Stripe canSubmitPaymentRequest:paymentRequest]) {
+            PKPaymentAuthorizationViewController *paymentAuthorizationViewController = [[PKPaymentAuthorizationViewController alloc] initWithPaymentRequest:paymentRequest];
+            
+            paymentAuthorizationViewController.delegate = self.appDelegate;
+            self.applePayCDVCallbackId = command.callbackId;
+            
+            NSLog(@"Callback ID is %@", command.callbackId);
+            
+            
+            [self.viewController presentViewController:paymentAuthorizationViewController animated:YES completion:nil];
+            
+            
+        } else {
+            NSLog(@"Problem with integration");
+        }
     }
     
-    paymentRequest.paymentSummaryItems = paymentSummaryItems;
-    
-    if ([Stripe canSubmitPaymentRequest:paymentRequest]) {
-        PKPaymentAuthorizationViewController *paymentAuthorizationViewController = [[PKPaymentAuthorizationViewController alloc] initWithPaymentRequest:paymentRequest];
-        
-        paymentAuthorizationViewController.delegate = self.appDelegate;
-        self.applePayCDVCallbackId = command.callbackId;
-        
-        NSLog(@"Callback ID is %@", command.callbackId);
-        
-        
-        [self.viewController presentViewController:paymentAuthorizationViewController animated:YES completion:nil];
-        
-        
-    } else {
-        NSLog(@"Problem with integration");
-    }
 }
-
 - (void)processPayment: (PKPaymentAuthorizationViewController *)controller didAuthorizePayment:(PKPayment *)payment completion:(void (^)(PKPaymentAuthorizationStatus))completion
 {
     [self.client createTokenWithPayment:payment completion:^(STPToken *token, NSError *error) {

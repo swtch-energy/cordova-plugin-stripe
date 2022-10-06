@@ -338,7 +338,7 @@ export namespace CordovaStripe {
      * @param {Function} error
      */
     static payWithApplePay(options: ApplePayOptions, success: (token: TokenResponse, callback: (paymentProcessed: boolean) => void) => void, error: ErrorCallback = NOOP) {
-      if (!options || !options.merchantId || !options.country || !options.currency || !options.items || !options.items.length) {
+      if (!options || !options.merchantId || !options.country || !options.currency || !options.items || !options.items.length || !options.mode) {
         error({
           message: 'Missing one or more payment options.'
         });
@@ -358,7 +358,8 @@ export namespace CordovaStripe {
         options.merchantId,
         options.country,
         options.currency,
-        options.items
+        options.items,
+        options.mode
       ])
     }
 

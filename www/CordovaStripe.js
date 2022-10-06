@@ -106,7 +106,7 @@ var CordovaStripe;
          */
         Plugin.payWithApplePay = function (options, success, error) {
             if (error === void 0) { error = NOOP; }
-            if (!options || !options.merchantId || !options.country || !options.currency || !options.items || !options.items.length) {
+            if (!options || !options.merchantId || !options.country || !options.currency || !options.items || !options.items.length || !options.mode) {
                 error({
                     message: 'Missing one or more payment options.'
                 });
@@ -124,7 +124,8 @@ var CordovaStripe;
                 options.merchantId,
                 options.country,
                 options.currency,
-                options.items
+                options.items,
+                options.mode
             ]);
         };
         Plugin.initGooglePay = function (success, error) {
